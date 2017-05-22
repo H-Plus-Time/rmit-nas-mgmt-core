@@ -67,7 +67,7 @@ exports.autoShorten = functions.database.ref('retailers/{rid}').onWrite(event =>
         // }).then(buffer => {
         //     return admin.storage().ref('qrcodes').child(shortUrl).put(buffer)
         // })
-        return admin.database().ref(`retailers/${rid}/short_url`).set(shortUrl);
+        return admin.database().ref(`retailers/${rid}/url`).set(shortUrl);
     })
     .then(resp => {
         console.log("Successfully saved shortUrl")
