@@ -15,7 +15,45 @@ const functions = require('firebase-functions');
 //
 
 const admin = require('firebase-admin');
+const readFile = require('fs-readfile-promise');
+const dot = require('dot');
+const conf = require('./config.js');
 admin.initializeApp(functions.config().firebase); // from which Realtime Database changes can be made.
+
+exports.notifyInvitee = functions.database.ref('/invitees/{email}').onWrite(event => {
+    const email = event.params.email;
+    const regularizedEmail = email.replace(/,/g, '.');
+    if (event.data.previous.exists()) {
+        return;
+    }
+
+    readFile('./email_template.html')
+    .then(buffer => {
+        const helper = require('sendgrid').mail;
+        const fromEmail = new helper.Email('nas@rmit.edu.au');
+        const toEmail = new helper.Email(regularizedEmail);
+        const subject = 'Invitation to RMIT Food Deals';
+        const inviteStr = dot.template(buffer.toString())({email: regularizedEmail});
+        const content = new helper.Content('text/html', inviteStr);
+        const mail = new helper.Mail(fromEmail, subject, toEmail, content);
+        var sg = require('sendgrid')(conf.sendgridKey);
+        var request = sg.emptyRequest({
+            method: 'POST',
+            path: '/v3/mail/send',
+            body: mail.toJSON()
+        });
+
+        sg.API(request, function (error, response) {
+            if (error) {
+                console.log('Error response received');
+            }
+            console.log(response.statusCode);
+            console.log(response.body);
+            console.log(response.headers);
+        });
+    })
+    
+})
 
 // listen to DB write events
 exports.fireNotification = functions.database.ref('/offers/{rid}/{arrId}').onWrite(event => {
@@ -42,7 +80,7 @@ exports.fireNotification = functions.database.ref('/offers/{rid}/{arrId}').onWri
     }).catch(err => console.log(err));
 });
 const googl = require('goo.gl');
-const conf = require('./config.js');
+
 const promisify = require("es6-promisify");
 const qrcode = require('qrcode');
 const fsRead = promisify(require('fs').readFile);

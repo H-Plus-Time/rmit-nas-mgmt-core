@@ -2,11 +2,14 @@
   "name": "functions",
   "description": "Cloud Functions for Firebase",
   "dependencies": {
+    "dot": "^1.1.2",
     "es6-promisify": "^5.0.0",
     "firebase-admin": "~4.2.1",
     "firebase-functions": "^0.5",
+    "fs-readfile-promise": "^3.0.0",
     "goo.gl": "*",
-    "qrcode": "^0.8.1"
+    "qrcode": "^0.8.1",
+    "sendgrid": "^5.1.0"
   },
   "private": true
 }
