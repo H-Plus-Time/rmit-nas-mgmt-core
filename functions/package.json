@@ -2,6 +2,7 @@
   "name": "functions",
   "description": "Cloud Functions for Firebase",
   "dependencies": {
+    "@google-cloud/storage": "^1.1.1",
     "dot": "^1.1.2",
     "es6-promisify": "^5.0.0",
     "firebase-admin": "~4.2.1",

@@ -84,28 +84,24 @@ const googl = require('goo.gl');
 const promisify = require("es6-promisify");
 const qrcode = require('qrcode');
 const fsRead = promisify(require('fs').readFile);
-const qrcodeToFile = promisify(qrcode.toFile);
+const qrcodeToFile = promisify(qrcode.toFile, {multiArgs: true});
+const gcs = require('@google-cloud/storage')();
+const bucket = gcs.bucket("nas-app.appspot.com");
 exports.autoShorten = functions.database.ref('retailers/{rid}').onWrite(event => {
     let rid = event.params.rid;
     if (event.data.previous.exists()) {
         return;
     }
     googl.setKey(conf.googlKey);
-
-    // Get currently set developer key
     googl.getKey();
-    // create the could URL!
+    // create the short URL!
     googl.shorten(`http://nas-app.firebaseapp.com/?${rid}`)
     .then(function (shortUrl) {
-        console.log(shortUrl);
-        // non-functional for the moment
-        // qrcodeToFile('./tmp.png', shortUrl, opts).then(err => {
-        //     // don't care
-        //     return fsRead('./tmp.png')
-        // }).then(buffer => {
-        //     return admin.storage().ref('qrcodes').child(shortUrl).put(buffer)
-        // })
-        return admin.database().ref(`retailers/${rid}/url`).set(shortUrl);
+        return admin.database().ref(`retailers/${rid}/url`).set(shortUrl).then(resp => {
+            return qrcodeToFile('/tmp/temp.svg', shortUrl)
+        }).then(resp => {
+            return bucket.upload('/tmp/temp.svg', {destination: `qrcodes/${rid}.svg`})
+        })
     })
     .then(resp => {
         console.log("Successfully saved shortUrl")
