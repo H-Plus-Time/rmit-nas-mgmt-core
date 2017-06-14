@@ -153,25 +153,43 @@ const fsRead = promisify(require('fs').readFile);
 const qrcodeToFile = promisify(qrcode.toFile, {multiArgs: true});
 const gcs = require('@google-cloud/storage')();
 const bucket = gcs.bucket("nas-app.appspot.com");
-const gm = require('gm');
-var imageMagick = gm.subClass({ imageMagick: true });
+const sharp = require('sharp');
+
 
 exports.autoShorten = functions.database.ref('retailers/{rid}').onWrite(event => {
     let rid = event.params.rid;
     if (event.data.previous.exists()) {
         return;
     }
+    const guideMarker = new Buffer(
+        '<svg width="768" height="768"><circle cx="384" cy="384" r="300" stroke-width="30" stroke="red" fill-opacity="0"></circle></svg>'
+    )
+    const options = {
+    raw: {
+        width: 1024,
+        height: 1024,
+        channels: 4
+    }
+    };
     googl.setKey(conf.googlKey);
     googl.getKey();
     // create the short URL!
-    googl.shorten(`http://nas-app.firebaseapp.com/?${rid}`)
+    googl.shorten(`https://rmit-promos.surge.sh/?${rid}`)
     .then(function (shortUrl) {
         return admin.database().ref(`retailers/${rid}/url`).set(shortUrl).then(resp => {
             return qrcodeToFile('/tmp/temp.png', shortUrl)
         }).then(resp => {
-            imageMagick("/tmp/temp.png").strokeWidth(10).resize(1024).drawCircle(512, 512, 1000, 1000)
-
+            return sharp(guideMarker).resize(1024, 1024).toFile('/tmp/circle.png');
+        }).then(resp => {
+            return sharp('/tmp/temp.png').resize(500, 500).raw().toBuffer()
+        }).then(resp => {
+            return sharp('/tmp/circle.png')
+                .overlayWith(resp, {raw: {width:500, height:500, channels:4}})
+                .toFile('/tmp/temp2.png')
+        }).then(resp => {
             return bucket.upload('/tmp/temp.png', {destination: `qrcodes/${rid}.png`})
+        }).then(resp => {
+            return bucket.upload('/tmp/temp2.png', {destination: `qrcodes/${rid}-guided.png`})
         })
     })
     .then(resp => {
