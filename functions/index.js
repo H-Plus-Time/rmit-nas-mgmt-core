@@ -19,6 +19,8 @@ const readFile = require('fs-readfile-promise');
 const dot = require('dot');
 const conf = require('./config.js');
 admin.initializeApp(functions.config().firebase); // from which Realtime Database changes can be made.
+const gcs = require('@google-cloud/storage')();
+const bucket = gcs.bucket("nas-app.appspot.com");
 
 exports.dailyCleanup = functions.https.onRequest((request, response) => {
     response.send('Not implemented')
@@ -109,6 +111,22 @@ exports.cronFireNotifications = functions.https.onRequest((request, response) =>
     })
 })
 
+exports.cleanupStorage = functions.database.ref('/retailers/{rid}/profile/banners/{bannerId}').onWrite(event => {
+    if(!event.data.exists()) {
+        let path = unescape(URL(event.data.previous.val().src).pathname);
+        let relPath = path.split('/').slice(5).join('/');
+        // delete the file at path
+        return bucket.rm(relPath);
+    } else {
+        if(event.data.previous.exists() && event.data.val() != event.data.previous.val()) {
+            // delete previous
+            let path = unescape(URL(event.data.previous.val().src).pathname);
+            let relPath = path.split('/').slice(5).join('/');
+            return bucket.rm(relPath);
+        }
+    }
+})
+
 // listen to DB write events
 exports.fireNotification = functions.database.ref('/offers/{rid}/{arrId}').onWrite(event => {
     // grab new value of what was added
@@ -151,14 +169,18 @@ const promisify = require("es6-promisify");
 const qrcode = require('qrcode');
 const fsRead = promisify(require('fs').readFile);
 const qrcodeToFile = promisify(qrcode.toFile, {multiArgs: true});
-const gcs = require('@google-cloud/storage')();
-const bucket = gcs.bucket("nas-app.appspot.com");
 const sharp = require('sharp');
 
 
 exports.autoShorten = functions.database.ref('retailers/{rid}').onWrite(event => {
     let rid = event.params.rid;
     if (event.data.previous.exists()) {
+        if(!event.data.exists()) {
+            // retailer has been deleted, need to clean up feeds.
+            let db = admin.database();
+            db.ref(`offers/${rid}`).remove();
+            return;
+        }
         return;
     }
     const guideMarker = new Buffer(
