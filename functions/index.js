@@ -133,14 +133,20 @@ exports.fireNotification = functions.database.ref('/offers/{rid}/{arrId}').onWri
     const newEvent = event.data.val(); // feed -> the object
     // check for error or deletion
     if (newEvent === null) {
-        return Promise.resolve();
+        console.log(event.data)
+        console.log("data is null")
+        // return Promise.resolve();
     }
     if (event.data.previous.exists()) {
+        console.log(newEvent)
+        console.log(event.data.previous.val())
+        console.log("event apparently exists already")
         return;
     }
     let now = new Date().getTime() / 1000;
     if(newEvent.start_time > (now) + 3600) {
         // leave this one for the cron job.
+        console.log(`scheduled for ${newEvent.start_time}`)
         return;
     }
     let rid = event.params.rid;
