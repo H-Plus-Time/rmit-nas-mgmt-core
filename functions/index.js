@@ -33,7 +33,7 @@ exports.notifyInvitee = functions.database.ref('/invitees/{email}').onWrite(even
         return;
     }
 
-    readFile('./email_template.html')
+    readFile('./invite_template.html')
     .then(buffer => {
         const helper = require('sendgrid').mail;
         const fromEmail = new helper.Email('nas@rmit.edu.au');
@@ -184,9 +184,11 @@ exports.autoShorten = functions.database.ref('retailers/{rid}').onWrite(event =>
             // retailer has been deleted, need to clean up feeds.
             let db = admin.database();
             db.ref(`offers/${rid}`).remove();
-            admin.auth().deleteUser(rid)
-            .then(_ => console.log("successfully deleted user"))
-            .catch(err => console.log("Error deleting user: ", err))
+            console.log(event.data.previous.val())
+            // delete the user record - up for discussion
+            // admin.auth().deleteUser(rid)
+            // .then(_ => console.log("successfully deleted user"))
+            // .catch(err => console.log("Error deleting user: ", err))
             return;
         }
         return;
