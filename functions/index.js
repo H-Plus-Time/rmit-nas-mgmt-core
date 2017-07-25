@@ -158,8 +158,7 @@ exports.fireNotification = functions.database.ref('/offers/{rid}/{arrId}').onWri
     const payload = {
         notification: {
             title: newEvent.title,
-            body: newEvent.tagline,
-            icon: 'no icon'
+            body: newEvent.tagline
         }
     };
     const topicStr = `/topics/offer-${rid}`;
@@ -185,6 +184,9 @@ exports.autoShorten = functions.database.ref('retailers/{rid}').onWrite(event =>
             // retailer has been deleted, need to clean up feeds.
             let db = admin.database();
             db.ref(`offers/${rid}`).remove();
+            admin.auth().deleteUser(rid)
+            .then(_ => console.log("successfully deleted user"))
+            .catch(err => console.log("Error deleting user: ", err))
             return;
         }
         return;
